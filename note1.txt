@@ -18,3 +18,95 @@ Error: endorsement failure during invoke. response: status:500 message:"error in
 docker-compose --env-file ./env ...
 
 
+===============================================================================
+在Lab中 org1.env  org2.env
+
+export CORE_PEER_TLS_ENABLED=true
+export CORE_PEER_LOCALMSPID="Org1MSP"
+export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
+export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
+export CORE_PEER_ADDRESS=localhost:7051
+
+
+export CORE_PEER_TLS_ENABLED=true
+export CORE_PEER_LOCALMSPID="Org2MSP"
+export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt
+export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp
+export CORE_PEER_ADDRESS=localhost:9051
+
+
+lifecycle chaincode package ${CC_NAME}.tar.gz --path ${CC_SRC_PATH} --lang ${CC_RUNTIME_LANGUAGE} --label ${CC_NAME}_${CC_VERSION}
+
+peer lifecycle chaincode package simple_chaincode.tar.gz --path ../lfd272/chaincodes/simple_chaincode --lang node --label simple_chaincode_1.0
+
+peer lifecycle chaincode install simple_chaincode.tar.gz
+
+Chaincode code package identifier: simple_chaincode_1.0:4fae17d0c4436adfcdf4914ed509ee76060d48963eea565959d6c59597ea08d3
+Chaincode code package identifier: simple_chaincode_1.0:4fae17d0c4436adfcdf4914ed509ee76060d48963eea565959d6c59597ea08d3
+
+export PACKAGE_ID=simple_chaincode_1.0:5e11633859d9976c872a38b13521279adf32d14ba8bffa6e29da4b43adcde680
+
+peer lifecycle chaincode install ${CC_NAME}.tar.gz 
+
+peer lifecycle chaincode queryinstalled 
+
+peer lifecycle chaincode approveformyorg -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile "$ORDERER_CA" --channelID $CHANNEL_NAME --name ${CC_NAME} --version ${CC_VERSION} --package-id ${PACKAGE_ID} --sequence ${CC_SEQUENCE} ${INIT_REQUIRED} ${CC_END_POLICY} ${CC_COLL_CONFIG}
+
+
+
+peer lifecycle chaincode approveformyorg -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --channelID mychannel --name simple_chaincode --version 1.0 --package-id $PACKAGE_ID --sequence 1 --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
+
+
+peer lifecycle chaincode checkcommitreadiness --channelID mychannel --name simple_chaincode --version 1.0 --sequence 1 --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem --output json
+
+peer lifecycle chaincode commit -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --channelID mychannel --name simple_chaincode --version 1.0 --sequence 1 --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem --peerAddresses localhost:7051 --tlsRootCertFiles ${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt --peerAddresses localhost:9051 --tlsRootCertFiles ${PWD}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt
+
+peer lifecycle chaincode querycommitted --channelID mychannel --name simple_chaincode --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
+
+peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n simple_chaincode --peerAddresses localhost:7051 --tlsRootCertFiles ${PWD}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt --peerAddresses localhost:9051 --tlsRootCertFiles --tlsRootCertFiles ${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt -c '{"function":"put","Args":["k", "v"]}'
+
+peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n simple_chaincode "${PEER_CONN_PARMS[@]}" --isInit -c '{"function":"put","Args":["k", "v"]}'
+
+./network.sh up createChannel -ca -s couchdb
+
+peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n simple_chaincode --peerAddresses localhost:7051 --tlsRootCertFiles ${PWD}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt --peerAddresses localhost:9051 --tlsRootCertFiles --tlsRootCertFiles ${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt -c '{"function":"put","Args":["k", "v"]}'
+2021-11-17 10:20:51.121 CET [comm.tls] ClientHandshake -> ERRO 001 Client TLS handshake failed after 1.2379ms with error: x509: certificate signed by unknown authority remoteaddress=127.0.0.1:7051
+2021-11-17 10:20:52.123 CET [comm.tls] ClientHandshake -> ERRO 002 Client TLS handshake failed after 827.2µs with error: x509: certificate signed by unknown authority remoteaddress=127.0.0.1:7051
+2021-11-17 10:20:53.892 CET [comm.tls] ClientHandshake -> ERRO 003 Client TLS handshake failed after 991.9µs with error: x509: certificate signed by unknown authority remoteaddress=127.0.0.1:7051
+
+
+
+./network.sh deployCC -ccn simple_cc -ccp ../lfd272/chaincodes/simple_chaincode -ccl javascript -ccv 1.0
+
+mkdir -p $HOME/go/src/github.com/hyperledger
+cd $HOME/go/src/github.com/hyperledger
+curl -sSL http://bit.ly/2ysbOFE | bash -s -- 2.2.2 1.4.9
+
+git clone https://github.com/hyperledger/fabric 
+cd fabric 
+git checkout release-2.2
+
+
+
+./network.sh deployCC -ccn reports -ccl javascript -ccp ~/go/src/github.com/hyperledger/fabric-samples/lfd272/chaincodes/reports_chaincode -ccv 1.0 -ccs 1 -cci init
+
+
+./network.sh deployCC -ccn reports -ccl javascript -ccp ../lfd272/chaincodes/reports_chaincode -ccv 1.0 -ccs 1 -cci init
+
+
+========================================================== 
+
+
+peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n reports --peerAddresses localhost:7051 --tlsRootCertFiles ${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt --peerAddresses localhost:9051 --tlsRootCertFiles ${PWD}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt -c '{"function":"getAnnualReport","Args":["2019"]}'
+
+
+fabric-samples/config/msp: no such file or directory
+是因为 org1.env 没有被正确环境变量
+
+
+peer chaincode query -n reports -C mychannel -c '{"function":"generateCustomReport", "Args":["{\"selector\":{\"price\": {\"$lt\": 0}}}"]}'
+
+
+kubectl config set-context k8s
+kubectl config use-context k8s
+

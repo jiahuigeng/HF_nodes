@@ -1,0 +1,28 @@
+启动链码
+./network.sh deployCC -ccn balance_transfer -ccv1.0 -ccp../lfd272/chaincodes/balance_transfer -ccl javascript
+
+设置环境变量
+export orderer="-o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem"
+export peer_org1="--peerAddresses localhost:7051 --tlsRootCertFiles ${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt"
+export peer_org2="--peerAddresses localhost:9051 --tlsRootCertFiles ${PWD}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt"
+peer chaincode invoke ${orderer} -C mychannel -n balance_transfer ${peer_org1} ${peer_org2} -c '{"function":"initAccount","Args":["A1","100"]}'
+peer chaincode invoke ${orderer} -C mychannel -n balance_transfer ${peer_org1} ${peer_org2} -c '{"function":"setBalance","Args":["A1","150"]}'
+
+
+peer chaincode query -C mychannel -n balance_transfer -c '{"function":"listAccounts", "Args":[]}'
+
+export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org1.example.com/users/User1@org1.example.com/msp
+
+peer chaincode invoke ${orderer} -C mychannel -n balance_transfer ${peer_org1} ${peer_org2} -c '{"function":"initAccount","Args":["U1","200"]}'
+
+peer chaincode query -C mychannel -n balance_transfer -c'{"function":"listAccounts", "Args":[]}'
+
+转移100 从U1 到 A1 
+peer chaincode invoke ${orderer} -C mychannel -n balance_transfer ${peer_org1} ${peer_org2} -c '{"function":"transfer","Args":["U1","A1", "100"]}'
+
+peer chaincode query -C mychannel -n balance_transfer-c'{"function":"listAccounts", "Args":[]}'
+
+peer chaincode invoke ${orderer} -C mychannel -n balance_transfer ${peer_org1} ${peer_org2} -c '{"function":"transfer","Args":["A1","U1", "100"]}'
+
+export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
+peer chaincode query -C mychannel -n balance_transfer -c'{"function":"listAccounts", "Args":[]}'
